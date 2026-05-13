@@ -173,3 +173,167 @@ echo request1.bin | dumbpipe connect <ticket> --custom-alpn utf8:/iroh-bytes/2 >
 
 if request1.bin contained a valid request for the `/iroh-bytes/2` protocol, response1.bin will
 now contain the response.
+
+# dp-mesh — Dynamic service discovery gateway
+
+Expose all listening TCP ports on a machine via a virtual IP, with dynamic discovery.
+
+## How it works
+
+- **Host**: Scans local listening ports (via `lsof` / `ss`), exposes them over iroh P2P
+- **Gateway**: Connects to the host, dynamically binds the same ports on a virtual IP
+- **Client**: Accesses host services via the virtual IP as if on the same LAN
+
+## Host
+
+```bash
+# First run auto-generates and saves a secret key
+dp-mesh host
+# → outputs ticket, give it to Gateway
+```
+
+## Gateway
+
+```bash
+# Bind all discovered ports on a virtual IP
+dp-mesh gateway --ticket <ticket> --bind-ip 192.168.33.0
+```
+
+Now any client on the same machine can:
+
+```bash
+curl http://192.168.33.0:3000     # accesses host:3000
+curl http://192.168.33.0:8080     # accesses host:8080
+```
+
+The host auto-discovers port changes every 3 seconds; the gateway dynamically starts/stops listeners accordingly.
+
+## Secret key
+
+Priority order: `IROH_SECRET` env variable, then `~/.config/dumbpipe/dp-mesh.secret`.
+On first run a new secret is generated and saved, so the ticket stays stable across restarts.
+
+# dp-vnet — P2P virtual network
+
+Tailscale-like mesh networking using TUN devices and iroh P2P tunnels.
+
+## How it works
+
+- Each node creates a TUN virtual network interface
+- Nodes assign themselves an IP in `100.64.0.0/10` (RFC 6598 CGNAT range, same as Tailscale)
+- All IP packets are forwarded via length-framed QUIC streams over P2P connections
+- The first node acts as coordinator; others register and receive a peer list
+
+## Start the coordinator
+
+```bash
+sudo dp-vnet daemon --ip 100.64.0.1
+# → outputs coordinator ticket
+```
+
+## Join a node
+
+```bash
+sudo dp-vnet daemon --peer <coordinator_ticket>
+# → auto-derived IP, e.g. 100.64.1.2
+```
+
+## Verify connectivity
+
+```bash
+ping 100.64.0.1
+ping 100.64.1.2
+# All traffic: TUN → raw IP → QUIC stream → iroh P2P → TUN on remote
+```
+
+## Requirements
+
+- **macOS**: `sudo` required (TUN creation + route manipulation)
+- **Linux**: `sudo` or `CAP_NET_ADMIN` capability
+
+## Secret key
+
+Priority order: `IROH_SECRET` env variable, then `~/.config/dumbpipe/dp-vnet.secret`.
+On first run a new secret is generated and saved, so your virtual IP stays stable across restarts.
+
+# dp-mesh — Dynamic service discovery gateway
+
+Expose all listening TCP ports on a machine via a virtual IP, with dynamic discovery.
+
+## How it works
+
+- **Host**: Scans local listening ports (via `lsof` / `ss`), exposes them over iroh P2P
+- **Gateway**: Connects to the host, dynamically binds the same ports on a virtual IP
+- **Client**: Accesses host services via the virtual IP as if on the same LAN
+
+## Host
+
+```bash
+# First run auto-generates and saves a secret key
+dp-mesh host
+# → outputs ticket, give it to Gateway
+```
+
+## Gateway
+
+```bash
+# Bind all discovered ports on a virtual IP
+dp-mesh gateway --ticket <ticket> --bind-ip 192.168.33.0
+```
+
+Now any client on the same machine can:
+
+```bash
+curl http://192.168.33.0:3000     # accesses host:3000
+curl http://192.168.33.0:8080     # accesses host:8080
+```
+
+The host auto-discovers port changes every 3 seconds; the gateway dynamically starts/stops listeners accordingly.
+
+## Secret key
+
+Priority order: `IROH_SECRET` env variable, then `~/.config/dumbpipe/dp-mesh.secret`.
+On first run a new secret is generated and saved, so the ticket stays stable across restarts.
+
+# dp-vnet — P2P virtual network
+
+Tailscale-like mesh networking using TUN devices and iroh P2P tunnels.
+
+## How it works
+
+- Each node creates a TUN virtual network interface
+- Nodes assign themselves an IP in `100.64.0.0/10` (RFC 6598 CGNAT range, same as Tailscale)
+- All IP packets are forwarded via length-framed QUIC streams over P2P connections
+- The first node acts as coordinator; others register and receive a peer list
+
+## Start the coordinator
+
+```bash
+sudo dp-vnet daemon --ip 100.64.0.1
+# → outputs coordinator ticket
+```
+
+## Join a node
+
+```bash
+sudo dp-vnet daemon --peer <coordinator_ticket>
+# → auto-derived IP, e.g. 100.64.1.2
+```
+
+## Verify connectivity
+
+```bash
+ping 100.64.0.1
+ping 100.64.1.2
+# All traffic: TUN → raw IP → QUIC stream → iroh P2P → TUN on remote
+```
+
+## Requirements
+
+- **macOS**: `sudo` required (TUN creation + route manipulation)
+- **Linux**: `sudo` or `CAP_NET_ADMIN` capability
+
+## Secret key
+
+Priority order: `IROH_SECRET` env variable, then `~/.config/dumbpipe/dp-vnet.secret`.
+On first run a new secret is generated and saved, so your virtual IP stays stable across restarts.
